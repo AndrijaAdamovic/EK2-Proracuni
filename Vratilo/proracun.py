@@ -102,9 +102,9 @@ def main():
     x = np.linspace(1, 370, 100)
     y_qy = vratilo.Q_y_diagram(x, vratilo.reakcijeOslonci(opterecenja), opterecenja)
     y_mz = vratilo.M_z_diagram(x, vratilo.reakcijeOslonci(opterecenja), opterecenja)
-    plt.plot(x, y_mz, '--')
-    #plt.plot(x, y_qy, '--')
-    plt.fill_between(x, y_mz, color='C1', alpha=0.3)
+    # plt.plot(x, y_mz, '--')
+    # plt.plot(x, y_qy, '--')
+    plt.fill_between(x, y_qy, color='C1', alpha=0.3)
     plt.show()
 
 if __name__ == '__main__': 
