@@ -57,7 +57,15 @@ class Vratilo:
         
         return {"F_Ay":X_h[0], "F_By":X_h[1], "F_Az":X_v[0], "F_Bz":X_v[1], "F_Bx":X_v[2]}
 
-
+    def Q_y_diagram(self, x, reak : dict, opter : dict):
+        if not np.all((x >= 0) & (x <= self.l)):
+            raise IndexError("Zadane tocke (x) nisu u intervalu [0, l]")
+        y = np.zeros(len(x))
+        y += reak["F_Ay"] * (x > 0) * (x <= self.l3)
+        y += (reak["F_Ay"] + opter["F_r2"]) * (x > self.l3) * (x <= self.l6)
+        y += -reak["F_By"] * (x > self.l6) * (x <= self.l)
+        return y
+    
 def main():
     #Parametri
     T_okretni = 570_000 # Moment vrtnje T [Nmm]
@@ -78,6 +86,7 @@ def main():
     opterecenja = vratilo.opterecenjaNaV()
     print(opterecenja)
     print(vratilo.reakcijeOslonci(opterecenja))
+    print(vratilo.Q_y_diagram(np.linspace(1, 370, 100), vratilo.reakcijeOslonci(opterecenja), opterecenja))
 
 if __name__ == '__main__': 
     main()
