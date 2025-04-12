@@ -77,7 +77,26 @@ class Vratilo:
         y += reak["F_By"] * (x - self.l) * (x > self.l6) * (x <= self.l)
         y /= 1000 # Pretvaranje iz Nmm u Nm
         return y
-
+    
+    def Q_z_diagram(self, x, reak: dict, opter: dict):
+        if not np.all((x >= 0) & (x <= self.l)):
+            raise IndexError("Zadane tocke (x) nisu u intervalu [0, l]") 
+        y = np.zeros(len(x))
+        y += reak["F_Az"] * (x > 0) * (x <= self.l3)
+        y += (reak["F_Az"] - self.G_Z2 - opter["F_t2"]) *  (x > self.l3) * (x <= self.l6)
+        y += -reak["F_Bz"] * (x > self.l6) * (x <= self.l)
+        return y
+    
+    def M_y_diagram(self, x, reak: dict, opter: dict):
+        if not np.all((x >= 0) & (x <= self.l)):
+            raise IndexError("Zadane tocke (x) nisu u intervalu [0, l]")   
+        y = np.zeros(len(x))
+        y += reak["F_Az"] * x * (x > 0) * (x <= self.l3)
+        y += (reak["F_Az"] * x - (self.G_Z2 + opter["F_t2"])*(x-self.l3)) *  (x > self.l3) * (x <= self.l6)
+        y += reak["F_Bz"] * (self.l - x) * (x > self.l6) * (x <= self.l)
+        y /= 1000 # Pretvaranje iz Nmm u Nm
+        return y
+    
 def main():
     #Parametri
     T_okretni = 570_000 # Moment vrtnje T [Nmm]
@@ -99,12 +118,14 @@ def main():
     print(opterecenja)
     print(vratilo.reakcijeOslonci(opterecenja))
     #print(vratilo.Q_y_diagram(np.linspace(1, 370, 100), vratilo.reakcijeOslonci(opterecenja), opterecenja))
-    x = np.linspace(1, 370, 100)
+    x = np.linspace(1, 370, 1000)
     y_qy = vratilo.Q_y_diagram(x, vratilo.reakcijeOslonci(opterecenja), opterecenja)
     y_mz = vratilo.M_z_diagram(x, vratilo.reakcijeOslonci(opterecenja), opterecenja)
+    y_qz = vratilo.Q_z_diagram(x, vratilo.reakcijeOslonci(opterecenja), opterecenja)
+    y_my = vratilo.M_y_diagram(x, vratilo.reakcijeOslonci(opterecenja), opterecenja)
     # plt.plot(x, y_mz, '--')
-    # plt.plot(x, y_qy, '--')
-    plt.fill_between(x, y_qy, color='C1', alpha=0.3)
+    plt.plot(x, y_my, '-')
+    # plt.fill_between(x, y_qy, color='C1', alpha=0.3)
     plt.show()
 
 if __name__ == '__main__': 
