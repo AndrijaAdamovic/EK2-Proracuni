@@ -78,17 +78,16 @@ class Vratilo:
     def Q_y(self, x, reak : dict, opter : dict):
         if not np.all((x >= 0) & (x <= self.l)):
             raise IndexError("Zadane tocke (x) nisu u intervalu [0, l]")
-        y = np.zeros(len(x))
+        y = np.zeros_like(x) 
         y += reak["F_Ay"] * (x >= 0) * (x <= self.l3)
         y += (reak["F_Ay"] + opter["F_r2"]) * (x > self.l3) * (x <= self.l6)
         y += -reak["F_By"] * (x > self.l6) * (x <= self.l)
-
         return y
     
     def M_z(self, x, reak: dict, opter : dict):
         if not np.all((x >= 0) & (x <= self.l)):
             raise IndexError("Zadane tocke (x) nisu u intervalu [0, l]")
-        y = np.zeros(len(x))
+        y = np.zeros_like(x) 
         y += -reak["F_Ay"] * x * (x >= 0) * (x <= self.l3)
         y += (-(reak["F_Ay"] + opter["F_r2"]) * x + opter["F_r2"] * self.l3) * (x > self.l3) * (x <= self.l6)
         y += reak["F_By"] * (x - self.l) * (x > self.l6) * (x <= self.l)
@@ -97,7 +96,7 @@ class Vratilo:
     def Q_z(self, x, reak: dict, opter: dict):
         if not np.all((x >= 0) & (x <= self.l)):
             raise IndexError("Zadane tocke (x) nisu u intervalu [0, l]") 
-        y = np.zeros(len(x))
+        y = np.zeros_like(x) 
         y += reak["F_Az"] * (x >= 0) * (x <= self.l3)
         y += (reak["F_Az"] - self.G_Z2 - opter["F_t2"]) *  (x > self.l3) * (x <= self.l6)
         y += -reak["F_Bz"] * (x > self.l6) * (x <= self.l)
@@ -106,7 +105,7 @@ class Vratilo:
     def M_y(self, x, reak: dict, opter: dict):
         if not np.all((x >= 0) & (x <= self.l)):
             raise IndexError("Zadane tocke (x) nisu u intervalu [0, l]")   
-        y = np.zeros(len(x))
+        y = np.zeros_like(x) 
         y += reak["F_Az"] * x * (x >= 0) * (x <= self.l3)
         y += (reak["F_Az"] * x - (self.G_Z2 + opter["F_t2"])*(x-self.l3)) *  (x > self.l3) * (x <= self.l6)
         y += reak["F_Bz"] * (self.l - x) * (x > self.l6) * (x <= self.l)
@@ -115,42 +114,94 @@ class Vratilo:
     def T_x(self, x):
         if not np.all((x >= 0) & (x <= self.l)):
             raise IndexError("Zadane tocke (x) nisu u intervalu [0, l]") 
-        y = np.zeros(len(x))
+        y = np.zeros_like(x) 
         y += self.T_okretni *  (x > self.l3) * (x <= self.l6)
         return y 
     
     def N_x(self, x, reak: dict):
         if not np.all((x >= 0) & (x <= self.l)):
             raise IndexError("Zadane tocke (x) nisu u intervalu [0, l]") 
-        y = np.zeros(len(x))     
+        y = np.zeros_like(x)     
         y += reak["F_Bx"] * (x > self.l6) * (x <= self.l)
         return y
 
     #Radijus idealnog vratila
-    def r_IdealnogVratila(self, x):
-        opter = self.opterecenjaNaV()
-        reak = self.reakcijeOslonci(opter)
-
+    def r_IdealnogVratila(self, x, reak: dict, opter: dict):
         m_y = self.M_y(x, reak, opter)
         m_z = self.M_z(x, reak, opter)
         n_x = self.N_x(x, reak)
 
-        r = np.zeros(len(x))
-        #Presjek 1, 0 <= x <= l3
-        r += np.cbrt(x) * np.cbrt((5 * reak["F_A"]) / (4 * self.sigma_fDN_dop)) * (x >= 0) * (x <= self.l3)
-
-        #Presjek 2, l3 < x <= l6
+        r = np.zeros_like(x) 
+        r += np.cbrt(x) * np.cbrt((5 * reak["F_A"]) / (4 * self.sigma_fDN_dop)) * (x >= 0) * (x <= self.l3) #0 <= x <= l3
+        
         alfa_0 = self.sigma_fDN / (np.sqrt(3) * self.tau_tDI)
         m_red = np.sqrt(m_y**2 + m_z**2 + 0.75*(alfa_0*self.T_okretni)**2)
-        r += (0.5 * np.cbrt((10 * m_red) / self.sigma_fDN_dop) ) * (x > self.l3) * (x <= self.l6)
+        r += (0.5 * np.cbrt((10 * m_red) / self.sigma_fDN_dop) ) * (x > self.l3) * (x <= self.l6) #Presjek 2, l3 < x <= l6
 
-        #Presjek 3 l6 < x <= l
         m_s = np.sqrt(m_y**2 + m_z**2)
         r += 0.5 * self.__roots3List(0, 
                                      (-4*reak["F_Bx"])/(self.sigma_fDN_dop * np.pi), 
-                                     ((-10*m_s)/self.sigma_fDN_dop)) * (x > self.l6) * (x <= self.l)
-    
+                                     ((-10*m_s)/self.sigma_fDN_dop)) * (x > self.l6) * (x <= self.l) #Presjek 3 l6 < x <= l
         return r
+    
+    def nacrtajDijagrame(self, broj_tocaka=10000, dark_mode=True, line_color="aquamarine"):
+        x = np.linspace(0, self.l, broj_tocaka)
+
+        opter = self.opterecenjaNaV()
+        reak = self.reakcijeOslonci(opter)
+
+        q_y = self.Q_y(x, reak, opter)
+        m_z = self.M_z(x, reak, opter) 
+        q_z = self.Q_z(x, reak, opter)
+        m_y = self.M_y(x, reak, opter) 
+        t_x = self.T_x(x) 
+        n_x = self.N_x(x, reak)
+        
+        y = np.array([q_y, q_z, m_z, m_y, n_x, t_x]) / 1000 #Dijelimo s 1000 da N pretvorimo u kN te Nmm u Nm
+        titles = np.array(["Q_y [kN]", "Q_z [kN]", "M_z [Nm]", "M_y [Nm]", "N_x [kN]", "T [Nm]"])
+
+        plt.style.use('dark_background') if dark_mode else plt.style.use('default')
+        fig, axs = plt.subplots(nrows=3, ncols=2, sharex=False, figsize=(20, 12))  
+        fig.tight_layout(pad=2, h_pad=5)
+        fig.canvas.manager.set_window_title("Dijagrami")
+
+        cnt = 0
+        for i in range(3):
+            for j in range(2):
+                axs[i, j].axhline(0, color=("white" if dark_mode else "black"), xmin=0, xmax=self.l, ls="--")
+                axs[i, j].plot(x, y[cnt], color=line_color)
+                axs[i, j].fill_between(x, y[cnt], where=y[cnt] > 0, hatch='|', facecolor='none', edgecolor=(0.5, 1, 0.5), alpha=1)
+                axs[i, j].fill_between(x, y[cnt], where=y[cnt] < 0, hatch='|', facecolor='none', edgecolor='r')
+                axs[i, j].set_title(titles[cnt])
+                cnt += 1
+    
+    def nacrtajIdealnoVratilo(self, stupnjevi, broj_tocaka=10000, dark_mode=False, line_color="magenta"):
+        x = np.linspace(0, self.l, broj_tocaka)
+
+        opter = self.opterecenjaNaV()
+        reak = self.reakcijeOslonci(opter)
+
+        r = self.r_IdealnogVratila(x, reak, opter)
+
+        plt.style.use('dark_background') if dark_mode else plt.style.use('default')
+        fig, axs = plt.subplots(figsize=(20, 8))
+        fig.tight_layout(pad=2, h_pad=5)
+
+        axs.axhline(0, color=("white" if dark_mode else "black"), xmin=0, xmax=self.l, ls="-.")
+        axs.plot(x, r, color=line_color)
+        axs.plot(x, -r, color=line_color)
+
+        r_stup = np.zeros_like(x)
+        r_stup += 17.5 * (x > 0) * (x <= 20)
+        r_stup += 25 * (x > 20) * (x <= 63)
+        r_stup += 30 * (x > 63) * (x <= 173)
+        r_stup += 35 * (x > 173) * (x <= 197)
+        r_stup += 30 * (x > 197) * (x <= 307)
+        r_stup += 25 * (x > 307) * (x <= 350)
+        r_stup += 17.5 * (x > 350) * (x < 370)
+
+        axs.plot(x, r_stup, color="w")
+        axs.plot(x, -r_stup, color="w")
     
 def main():
     #Parametri
@@ -169,22 +220,10 @@ def main():
     beta_Z3 = np.deg2rad(18) # Kut skosenja
 
     vratilo = Vratilo(T_okretni, materijal, J_Z2, J_Z3, l, G_Z2, G_Z3, b_Z2, b_Z3, r_Z2, r_Z3, alpha_Z, beta_Z3)
-    opterecenja = vratilo.opterecenjaNaV()
-    print(opterecenja)
-    print(vratilo.l3)
-    print(vratilo.reakcijeOslonci(opterecenja))
-    #print(vratilo.Q_y_diagram(np.linspace(1, 370, 100), vratilo.reakcijeOslonci(opterecenja), opterecenja))
-    x = np.linspace(0, 370, 10000)
-    # y_qy = vratilo.Q_y(x, vratilo.reakcijeOslonci(opterecenja), opterecenja)
-    y_mz = vratilo.M_z(x, vratilo.reakcijeOslonci(opterecenja), opterecenja)
-    # y_qz = vratilo.Q_z(x, vratilo.reakcijeOslonci(opterecenja), opterecenja)
-    y_my = vratilo.M_y(x, vratilo.reakcijeOslonci(opterecenja), opterecenja)
-    # plt.plot(x, y_mz, '--')
-    r = vratilo.r_IdealnogVratila(x)
-    print(np.max(r))
-    plt.plot(x, r, '--')
-    # plt.plot(x, -r, '--')
-    # # plt.fill_between(x, y_qy, color='C1', alpha=0.3)
+
+    vratilo.nacrtajDijagrame()
+    vratilo.nacrtajIdealnoVratilo(1, dark_mode=True)
+    
     plt.show()
 
 if __name__ == '__main__': 
